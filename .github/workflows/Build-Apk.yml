@@ -28,12 +28,26 @@ jobs:
           cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
 
       - name: write gkd secrets info
+        env:
+          GKD_STORE_FILE_BASE64: ${{ secrets.GKD_STORE_FILE_BASE64 }}
+          GKD_STORE_PASSWORD: ${{ secrets.GKD_STORE_PASSWORD }}
+          GKD_KEY_ALIAS: ${{ secrets.GKD_KEY_ALIAS }}
+          GKD_KEY_PASSWORD: ${{ secrets.GKD_KEY_PASSWORD }}
         run: |
-          echo ${{ secrets.GKD_STORE_FILE_BASE64 }} | base64 --decode > ${{ github.workspace }}/gkd.jks
+          if [ -z "$GKD_STORE_FILE_BASE64" ] || [ -z "$GKD_STORE_PASSWORD" ] || [ -z "$GKD_KEY_ALIAS" ] || [ -z "$GKD_KEY_PASSWORD" ]; then
+            echo "::warning::GKD signing secrets are incomplete. Falling back to debug signing."
+            exit 0
+          fi
+          printf '%s' "$GKD_STORE_FILE_BASE64" | base64 --decode > "${{ github.workspace }}/gkd.jks"
+          if ! keytool -list -keystore "${{ github.workspace }}/gkd.jks" -storepass "$GKD_STORE_PASSWORD" -alias "$GKD_KEY_ALIAS" > /dev/null; then
+            echo "::warning::GKD signing secrets are invalid. Falling back to debug signing."
+            rm -f "${{ github.workspace }}/gkd.jks"
+            exit 0
+          fi
           echo GKD_STORE_FILE='${{ github.workspace }}/gkd.jks' >> gradle.properties
-          echo GKD_STORE_PASSWORD='${{ secrets.GKD_STORE_PASSWORD }}' >> gradle.properties
-          echo GKD_KEY_ALIAS='${{ secrets.GKD_KEY_ALIAS }}' >> gradle.properties
-          echo GKD_KEY_PASSWORD='${{ secrets.GKD_KEY_PASSWORD }}' >> gradle.properties
+          echo GKD_STORE_PASSWORD="$GKD_STORE_PASSWORD" >> gradle.properties
+          echo GKD_KEY_ALIAS="$GKD_KEY_ALIAS" >> gradle.properties
+          echo GKD_KEY_PASSWORD="$GKD_KEY_PASSWORD" >> gradle.properties
 
       - run: echo GKD_RENAME_APK_FLAG=1 >> gradle.properties
 
