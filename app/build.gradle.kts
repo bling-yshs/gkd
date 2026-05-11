@@ -68,7 +68,7 @@ android {
         minSdk = rootProject.ext["android.minSdk"] as Int
         targetSdk = rootProject.ext["android.targetSdk"] as Int
 
-        applicationId = "li.songe.gkd"
+        applicationId = "com.yshs.gkd"
         versionCode = 90
         versionName = "1.12.0-beta.9"
 
